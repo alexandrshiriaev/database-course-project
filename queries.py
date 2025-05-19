@@ -206,7 +206,7 @@ AGG_QUERIES = [
 
 COMPLEX_QUERIES = [
     {
-        "title": "Топ-5 самых раритетных изданий по каждому отделу и по всей библиотеке",
+        "title": "Топ-5 самых раритетных изданий по каждому отделу и по всей библиотеке", # здесь имеется ввиду топ-5 и по всей библиотеке, или весь топ по библиотеке? нужен ли LIMIT 5 в конце
         "sql": '''
             WITH ranked_books AS (
                 SELECT
@@ -217,14 +217,18 @@ COMPLEX_QUERIES = [
                 FROM books_in_inventory bii
                 JOIN books b ON bii.book_id = b.isbn
                 JOIN departments d ON bii.department_id = d.id
-            )
-            SELECT department, title, publication_year
-            FROM ranked_books
-            WHERE rn <= 5
+            ), departments_books AS (
+                SELECT department, title, publication_year
+                FROM ranked_books
+                WHERE rn <= 5
+            ), library_books AS (
+                SELECT 'Вся библиотека' AS department, b.title, b.publication_year
+                FROM books b
+                ORDER BY department, publication_year ASC NULLS LAST LIMIT 5
+            ) 
+            SELECT * FROM departments_books 
             UNION ALL
-            SELECT 'Вся библиотека' AS department, b.title, b.publication_year
-            FROM books b
-            ORDER BY department, publication_year
+            SELECT * FROM library_books 
         ''',
         "columns": ["department", "title", "publication_year"],
         "headers": ["Отдел/Вся библиотека", "Название книги", "Год издания"]

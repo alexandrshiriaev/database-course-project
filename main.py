@@ -250,17 +250,19 @@ class TablesFrame(ctk.CTkFrame):
                 frame.pack(fill="x", pady=3)
                 ent = ctk.CTkEntry(frame, placeholder_text="YYYY-MM-DD")
                 ent.pack(side="left", expand=True, fill="x")
-                def show_calendar():
-                    top = ctk.CTkToplevel()
-                    top.title("Выберите дату")
-                    cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
-                    cal.pack(padx=10, pady=10)
-                    def set_date():
-                        ent.delete(0, "end")
-                        ent.insert(0, cal.get_date())
-                        top.destroy()
-                    ctk.CTkButton(top, text="Выбрать", command=set_date).pack(pady=5)
-                btn = ctk.CTkButton(frame, text="📅", width=30, command=show_calendar)
+                def create_calendar_callback(entry_widget):
+                    def show_calendar():
+                        top = ctk.CTkToplevel()
+                        top.title("Выберите дату")
+                        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+                        cal.pack(padx=10, pady=10)
+                        def set_date():
+                            entry_widget.delete(0, "end")
+                            entry_widget.insert(0, cal.get_date())
+                            top.destroy()
+                        ctk.CTkButton(top, text="Выбрать", command=set_date).pack(pady=5)
+                    return show_calendar
+                btn = ctk.CTkButton(frame, text="📅", width=30, command=create_calendar_callback(ent))
                 btn.pack(side="right", padx=(5,0))
                 widgets[col] = ("date", ent)
             elif self.current_key == "files" and col == "file_data":
@@ -402,6 +404,10 @@ class TablesFrame(ctk.CTkFrame):
 class QueriesFrame(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
+        top_bar = ctk.CTkFrame(self)
+        top_bar.pack(fill="x", padx=10, pady=6)
+        ctk.CTkButton(top_bar, text="На главное меню", command=lambda: master.show("MenuFrame")).pack(side="right")
+        
         self.tabs = ctk.CTkTabview(self)
         self.tabs.pack(expand=True, fill="both", padx=20, pady=20)
         self.simple_tab = self.tabs.add("Простые запросы")
@@ -415,7 +421,6 @@ class QueriesFrame(ctk.CTkFrame):
             ctk.CTkButton(self.complex_tab, text=q["title"], command=lambda q=q: self.prepare_query(q)).pack(fill="x", pady=4)
         self.result_box = ctk.CTkTextbox(self, height=200)
         self.result_box.pack(fill="both", padx=20, pady=(0,20), expand=True)
-        ctk.CTkButton(self, text="На главное меню", command=lambda: master.show("MenuFrame")).pack(pady=10)
 
     def prepare_query(self, q):
         if "params" not in q:
@@ -432,17 +437,19 @@ class QueriesFrame(ctk.CTkFrame):
                 frame.pack(fill="x", padx=10, pady=3)
                 ent = ctk.CTkEntry(frame, placeholder_text="YYYY-MM-DD")
                 ent.pack(side="left", expand=True, fill="x")
-                def show_calendar():
-                    top = ctk.CTkToplevel()
-                    top.title("Выберите дату")
-                    cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
-                    cal.pack(padx=10, pady=10)
-                    def set_date():
-                        ent.delete(0, "end")
-                        ent.insert(0, cal.get_date())
-                        top.destroy()
-                    ctk.CTkButton(top, text="Выбрать", command=set_date).pack(pady=5)
-                btn = ctk.CTkButton(frame, text="📅", width=30, command=show_calendar)
+                def create_calendar_callback(entry_widget):
+                    def show_calendar():
+                        top = ctk.CTkToplevel()
+                        top.title("Выберите дату")
+                        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+                        cal.pack(padx=10, pady=10)
+                        def set_date():
+                            entry_widget.delete(0, "end")
+                            entry_widget.insert(0, cal.get_date())
+                            top.destroy()
+                        ctk.CTkButton(top, text="Выбрать", command=set_date).pack(pady=5)
+                    return show_calendar
+                btn = ctk.CTkButton(frame, text="📅", width=30, command=create_calendar_callback(ent))
                 btn.pack(side="right", padx=(5,0))
                 entries[param["name"]] = ent
             elif param["type"] == "select":
