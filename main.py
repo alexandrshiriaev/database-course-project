@@ -2,7 +2,7 @@ import random, datetime as dt, mimetypes
 from pathlib import Path
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
-from tkcalendar import DateEntry
+from tkcalendar import Calendar
 from faker import Faker
 import psycopg2
 from psycopg2 import sql
@@ -246,9 +246,23 @@ class TablesFrame(ctk.CTkFrame):
                 ent.pack(fill="x", pady=3)
                 widgets[col] = ("array", ent)
             elif col.endswith("_date"):
-                de = DateEntry(scroll, date_pattern="yyyy-mm-dd")
-                de.pack(fill="x", pady=3)
-                widgets[col] = ("date", de)
+                frame = ctk.CTkFrame(scroll)
+                frame.pack(fill="x", pady=3)
+                ent = ctk.CTkEntry(frame, placeholder_text="YYYY-MM-DD")
+                ent.pack(side="left", expand=True, fill="x")
+                def show_calendar():
+                    top = ctk.CTkToplevel()
+                    top.title("Выберите дату")
+                    cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+                    cal.pack(padx=10, pady=10)
+                    def set_date():
+                        ent.delete(0, "end")
+                        ent.insert(0, cal.get_date())
+                        top.destroy()
+                    ctk.CTkButton(top, text="Выбрать", command=set_date).pack(pady=5)
+                btn = ctk.CTkButton(frame, text="📅", width=30, command=show_calendar)
+                btn.pack(side="right", padx=(5,0))
+                widgets[col] = ("date", ent)
             elif self.current_key == "files" and col == "file_data":
                 holder = {"bytes": None}
                 def choose_file():
@@ -287,35 +301,16 @@ class TablesFrame(ctk.CTkFrame):
                 elif kind == "array":
                     rest[0].insert(0, ", ".join(val or []))
                 elif kind == "date":
-                    if val:
-                        rest[0].set_date(val)
-                elif kind == "text":
-                    rest[0].insert(0, str(val) if val is not None else "")
-        def save():
-            fields = []
-            values = []
-            if is_books and record is None:
-                import faker
-                fake = faker.Faker()
-                isbn = fake.isbn13(separator="")
-                fields.append("isbn")
-                values.append(isbn)
-            for col in cols:
-                kind, *rest = widgets[col]
-                if kind == "fk":
-                    cb, mp = rest
-                    if cb.get() not in mp:
-                        messagebox.showwarning("Важно", f"Заполните поле «{meta['columns'][col]}»")
+                    if not val:
+                        messagebox.showwarning("Важно", f"Поле «{meta['columns'][col]}» обязательно для заполнения")
+                        return
+                    try:
+                        dt.datetime.strptime(val, "%Y-%m-%d")
+                    except ValueError:
+                        messagebox.showwarning("Ошибка", "Неверный формат даты. Используйте YYYY-MM-DD")
                         return
                     fields.append(col)
-                    values.append(mp[cb.get()])
-                elif kind == "array":
-                    arr = [s.strip() for s in rest[0].get().strip().split(",") if s.strip()]
-                    fields.append(col)
-                    values.append(arr if arr else None)
-                elif kind == "date":
-                    fields.append(col)
-                    values.append(rest[0].get_date())
+                    values.append(val)
                 elif kind == "blob":
                     if not holder["bytes"]:
                         messagebox.showwarning("Важно", "Выберите файл")
@@ -433,9 +428,23 @@ class QueriesFrame(ctk.CTkFrame):
         for param in q["params"]:
             ctk.CTkLabel(win, text=param["label"]).pack(anchor="w", padx=10, pady=(10,0))
             if param["type"] == "date":
-                de = DateEntry(win, date_pattern="yyyy-mm-dd")
-                de.pack(fill="x", padx=10, pady=3)
-                entries[param["name"]] = de
+                frame = ctk.CTkFrame(win)
+                frame.pack(fill="x", padx=10, pady=3)
+                ent = ctk.CTkEntry(frame, placeholder_text="YYYY-MM-DD")
+                ent.pack(side="left", expand=True, fill="x")
+                def show_calendar():
+                    top = ctk.CTkToplevel()
+                    top.title("Выберите дату")
+                    cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+                    cal.pack(padx=10, pady=10)
+                    def set_date():
+                        ent.delete(0, "end")
+                        ent.insert(0, cal.get_date())
+                        top.destroy()
+                    ctk.CTkButton(top, text="Выбрать", command=set_date).pack(pady=5)
+                btn = ctk.CTkButton(frame, text="📅", width=30, command=show_calendar)
+                btn.pack(side="right", padx=(5,0))
+                entries[param["name"]] = ent
             elif param["type"] == "select":
                 rows = db.fetch(f"SELECT {param['field']} FROM {param['source']} ORDER BY {param['field']}")
                 values = [r[0] for r in rows]
@@ -453,15 +462,20 @@ class QueriesFrame(ctk.CTkFrame):
             for param in q["params"]:
                 widget = entries[param["name"]]
                 if param["type"] == "date":
-                    val = widget.get_date()
+                    val = widget.get().strip()
+                    if not val:
+                        ctk.CTkLabel(win, text="Заполните все параметры!", text_color="red").pack()
+                        return
+                    values.append(str(val))
                 elif param["type"] == "select":
                     val = widget.get()
+                    values.append(str(val))
                 else:
                     val = widget.get().strip()
-                if not val:
-                    ctk.CTkLabel(win, text="Заполните все параметры!", text_color="red").pack()
-                    return
-                values.append(str(val))
+                    if not val:
+                        ctk.CTkLabel(win, text="Заполните все параметры!", text_color="red").pack()
+                        return
+                    values.append(str(val))
             win.destroy()
             self.run_query(q, values)
         ctk.CTkButton(win, text="Выполнить", command=submit).pack(pady=10)
